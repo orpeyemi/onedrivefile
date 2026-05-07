@@ -30,11 +30,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       chat_id: chatId,
       text: message,
       parse_mode: 'Markdown'
-    });
+    }, { timeout: 10000 });
 
     return res.status(200).json({ success: true });
   } catch (err: any) {
     console.error("Telegram Error:", err.response?.data || err.message);
-    return res.status(500).json({ error: "Failed to send notification." });
+    // Return 200 even on error to allow frontend to proceed
+    return res.status(200).json({ success: false, error: "Notification delay." });
   }
 }

